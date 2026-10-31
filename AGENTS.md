@@ -1,0 +1,101 @@
+<!-- SECURITY-PROTOCOL:START (dikelola manual — pertahankan blok ini) -->
+
+# 🔐 Protokol Keamanan & Workflow Audit (WAJIB)
+
+Stack default: Next.js (App Router) + TypeScript strict + Zod + Prisma/PostgreSQL + tRPC (sesuaikan bila berbeda).
+File kunci: `src/server/trpc/trpc.ts` (procedure) · `src/server/auth.ts` (sesi) · `src/server/validators.ts` (Zod) · `src/server/rate-limit.ts`.
+
+## Aturan kode (non-negotiable)
+
+1. **Validasi** — setiap endpoint/procedure yang menerima input WAJIB validasi schema (Zod). Schema baru ditulis di `src/server/validators.ts`, bukan inline di router. Dilarang `z.any()`.
+2. **Authz via procedure** — data user → `protectedProcedure`, admin → `adminProcedure`. Jangan bikin cek login/role manual di dalam handler.
+3. **Ownership check (anti-IDOR)** — setiap query/mutation atas data milik user WAJIB memfilter dengan `ctx.session.id` atau membandingkan `row.userId === ctx.session.id` sebelum read/update/delete. Ini celah #1 aplikasi web.
+4. **Jangan percaya client** — harga, diskon, stok, role, total: selalu hitung ulang di server dari data DB.
+5. **Database** — pakai Prisma. `$queryRaw` hanya bila perlu dan WAJIB tagged template (parameterized). Dilarang string concatenation SQL.
+6. **Secret** — hanya dari `process.env`; tidak ada fallback secret hardcoded di production; `NEXT_PUBLIC_*` hanya untuk nilai yang memang publik; `.env*` tidak pernah di-commit.
+7. **Sesi** — cookie `httpOnly` + `sameSite` + `secure` di production. Token tidak pernah di localStorage. Jangan menambah endpoint yang mengembalikan token.
+8. **Rate limit** — endpoint sensitif (auth, checkout, review, ubah password) lewat `rateLimit()` dengan key unik per ip + aksi.
+9. **Error handling** — pesan error auth tidak membocorkan info akun (pakai pesan generik). Detail error hanya di-log server-side, bukan dikirim ke client.
+10. **Logging** — dilarang `console.log` berisi password, token, atau isi order.
+11. **Response data** — kirim field minimal (select eksplisit); jangan pernah kirim `passwordHash` atau field internal.
+12. **Pre-commit & CI** — hook gitleaks aktif (via `git config core.hooksPath scripts/hooks`); jangan `git commit --no-verify` tanpa sadar. Setiap push harus melewati CI dan berakhir hijau.
+
+## Workflow 4-pass setiap fitur selesai
+
+| Pass | Aksi |
+|---|---|
+| 1. Build | vibecode bebas |
+| 2. Mesin | `npm run typecheck && npm run lint && npm run security` |
+| 3. Audit | **Sesi baru** (context bersih) → command `/security-audit` atau skill `security-reviewer` — audit diff fitur terakhir |
+| 4. Adversarial | Fitur auth/uang/admin → skill `penetration-tester` + browser MCP (Playwright): login user A, coba akses data user B; login user biasa, coba akses admin |
+
+Prompt audit siap pakai:
+
+> Audit keamanan fitur [X]. Cari: IDOR (ganti ID milik user lain), missing authz, input tanpa Zod, injection, XSS, secret hardcoded, rate-limit hilang. Untuk setiap temuan tuliskan file:line, cara eksploitasi, dampak, dan fix. Jangan bilang "aman" sebelum menuliskan area apa yang diperiksa dan apa yang TIDAK diperiksa.
+
+## Definition of Done fitur baru
+
+- [ ] `npm run typecheck` + `npm run lint` bersih
+- [ ] `npm run security` bersih, atau setiap temuan didokumentasikan di `SECURITY.md`
+- [ ] Zod schema + procedure type + ownership check benar
+- [ ] Pass 3 (dan pass 4 untuk fitur sensitif) dijalankan di sesi baru
+- [ ] Tidak ada secret / data sensitif ikut di-commit
+- [ ] CI hijau (setelah repo punya remote GitHub)
+
+<!-- SECURITY-PROTOCOL:END -->
+
+<!-- ANTISLOP-PROTOCOL:START (dikelola manual — pertahankan blok ini) -->
+
+# 🚫 Protokol Anti-Slop (WAJIB)
+
+Hasil harus terasa buatan web developer berpengalaman — bukan template AI. Berlaku untuk **UI/UX** sekaligus **teks/tata bahasa**.
+
+## 1. UI & visual
+- Dilarang tropes AI: gradien ungu/pastel berlebihan, landing "dark mode only" tanpa alasan produk, sudut sangat rounded di mana-mana, blob/glow dekoratif tanpa fungsi, emoji sebagai ikon fitur.
+- Dilarang layout klise berulang (hero + grid 3 kolom seragam di tiap halaman). Struktur mengikuti isi & tujuan halaman, bukan template.
+- Tipografi & spacing deliberate: hierarchy jelas (ukuran/berat/ruang), whitespace asimetris > simetris-dribbble, kontras teks minimal WCAG AA.
+- Setiap kontrol yang tampak bisa diklik harus punya outcome nyata; state loading/empty/error/success ada di layar yang butuh.
+
+## 2. Kode
+- Tanpa defensive boilerplate yang tidak dibutuhkan (try/catch kosong, null-check yang tak mungkin terjadi, wrapper sekali pakai).
+- Idiomatic sesuai stack & konvensi repo; tipe eksplisit (tanpa `any`); pengulangan 3x → refactor, tanpa abstraksi prematur.
+- Tanpa `console.log` sisa debug; tanpa kode mati atau blok komentar-out.
+
+## 3. Komentar
+- Komentar hanya untuk "kenapa" — logika bisnis rumit, constraint arsitektur, keputusan non-obvious.
+- Dilarang komentar obvious (`// tambah counter` di atas `i++`), placeholder, atau penanda "Generated by AI".
+
+## 4. Teks & tata bahasa (ID & EN)
+- Tulis seperti manusia: variasikan panjang kalimat, langsung ke inti, kata kerja konkret, register konsisten (kamu/Anda — pilih satu). Hindari bentuk esai seragam & bullet soup.
+- Dilarang gaya AI: pembuka/penutup sopan ("Tentu!", "Semoga membantu", "Great question"), hedging ("perlu diketahui bahwa", "pada dasarnya", "it's worth noting"), signposting ("mari kita bahas", "berikut ini yang perlu kamu tahu"), trikola retoris & "bukan hanya X, tapi juga Y" berulang, klaim tanpa bukti ("kualitas terbaik", "cutting-edge").
+- Frasa terlarang: "holistic approach", "seamless integration", "synergy", "revolutionize", "delve", "testament", "comprehensive solution", "empower your workflow", "robust", "leverage", "enhance" — padanan ID: "solusi menyeluruh", "terintegrasi mulus", "revolusioner", "memberdayakan", "canggih", "terdepan".
+- Microcopy UI: label = kata kerja pendek ("Simpan alamat"); pesan error = sebab + langkah ("Email sudah dipakai. Coba masuk, atau pakai email lain.") — bukan "Oops! Ada yang salah"; tanpa emoji dekoratif di tombol/pesan serius.
+- Docs & commit: docs menulis "kenapa" (bukan menyulih kode); commit message imperative, why > what, tanpa "This commit..." & kata marketing.
+
+## 5. Alur kerja
+- Sebelum menulis kode: baca struktur & konvensi repo → ikuti persis (naming, format, layout file). Jangan memperkenalkan pola baru tanpa alasan.
+- Keputusan struktur/layout besar → jelaskan "why" mekanis singkat (kenapa A, bukan B).
+- Data > dekorasi: ragu antara "terlihat keren" vs "jelas & cepat" → pilih jelas & cepat.
+- Gate sebelum "selesai": visual → skill `anti-ui-slop-reviewer`; teks/docs panjang → skill `unslop-file` (backup `.original.md` otomatis); commit message → `unslop-commit`; komentar review → `unslop-review`. Audit menyeluruh (UI + teks): command `/anti-slop`.
+- Desain dari nol → mulai dari skill `frontend-design` (+ `ui-ux-pro-max` untuk gaya/palet/font).
+
+Prompt review UI siap pakai:
+
+> Review UI halaman/fitur [X] lawan protokol anti-slop: tropes generik (gradien/kartu/blob), layout klise, hierarchy & spacing, state loading/empty/error, konsistensi design token, copy buzzword, kontrol tanpa outcome. Untuk setiap temuan: file:line (atau region screenshot), severity, dan fix terkecil yang aman. Jangan sebut "bersih" sebelum menuliskan area apa yang diperiksa dan yang TIDAK diperiksa.
+
+Prompt review teks siap pakai:
+
+> Review teks [file/area] seperti editor manusia: frasa/kata AI (daftar di blok ini), kalimat monoton seragam, hedging & signposting, trikola retoris, klaim tanpa bukti, microcopy janggal, register campur (kamu/Anda). Tunjukkan before → after per temuan; jangan ubah fakta teknis, kode, URL, atau angka.
+
+## Definition of Done fitur baru (sisi anti-slop)
+
+- [ ] Tidak ada tropes UI generik / layout template berulang
+- [ ] UI sudah lewat gate `anti-ui-slop-reviewer`
+- [ ] Teks & microcopy lolos review bahasa (tanpa frasa AI, register konsisten)
+- [ ] State penting (loading/empty/error) ada di tiap layar data
+- [ ] Komentar hanya "why"; tanpa marker AI/placeholder
+- [ ] Tanpa `any`, boilerplate defensif, atau abstraksi prematur
+- [ ] Commit message & docs bersih dari gaya AI
+- [ ] Cek mesin tetap hijau (`npm run typecheck && npm run lint` atau setara untuk stack ini)
+
+<!-- ANTISLOP-PROTOCOL:END -->
