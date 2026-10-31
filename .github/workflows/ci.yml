@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Sesuaikan bila build butuh env lain (mis. DATABASE_URL untuk Prisma).
-      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

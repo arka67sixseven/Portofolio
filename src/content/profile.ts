@@ -1,0 +1,15 @@
+export const profile = {
+  name: "Rafif Arkana Putra",
+  shortName: "Rafif",
+  wordmark: "rafif arkana",
+  role: "Web developer",
+  education: "Siswa RPL",
+  focus: "Landing page & website profil",
+  stack: ["Next.js", "TypeScript", "Tailwind"],
+  location: "Yogyakarta",
+  locationFull: "Yogyakarta, Indonesia",
+  email: "rafifarkanaputra28@gmail.com",
+  whatsapp: "6288212908428",
+  github: "https://github.com/arka67sixseven",
+  availability: "Terbuka untuk proyek",
+} as const;
